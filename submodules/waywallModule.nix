@@ -18,12 +18,12 @@
     };
 
     binaryPath = lib.mkOption {
-      type = lib.types.nullOr lib.types.path;
+      type = lib.types.nullOr lib.types.str;
       default = null;
       description = ''
-        Direct path to the waywall binary.
+        Direct path to the waywall binary as a string.
         Takes precedence over package if both are set.
-        Example: /home/user/waywall/result/bin/waywall
+        Example: "/home/user/waywall/result/bin/waywall"
       '';
     };
 
@@ -37,12 +37,12 @@
     };
 
     glfwPath = lib.mkOption {
-      type = lib.types.nullOr lib.types.path;
+      type = lib.types.nullOr lib.types.str;
       default = null;
       description = ''
-        Direct path to a custom libglfw.so file.
+        Direct path to a custom libglfw.so file as a string.
         Takes precedence over glfwPackage if both are set.
-        Example: /home/user/glfw/build/src/libglfw.so
+        Example: "/home/user/glfw/build/src/libglfw.so"
       '';
     };
 
