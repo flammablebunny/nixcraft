@@ -1,6 +1,7 @@
 {
   python3,
   lib,
+  ...
 }:
 python3.pkgs.buildPythonApplication {
   pname = "nixcraft-auth";
