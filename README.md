@@ -2,14 +2,68 @@
 
 Nixcraft - A declarative minecraft launcher in nix
 
-Warning - This project is in a usable state but stil a work in progress. Do expect things to break.
+Warning - This project is in a usable state but still a work in progress. Do expect things to break.
 
 ## Features
 
   1. Supports clients and servers
   2. Supports Mod Loaders (Fabric loader, Quilt loader & paper servers)
   3. Supports Modpacks (modrinth .mrpack)
-  4. MCSR - Supports speedrunning related content
+  4. MCSR - Supports speedrunning related content (waywall integration)
+  5. Microsoft Authentication support via `nixcraft-auth`
+  6. Skin and cape management via `nixcraft-skin`
+  7. CLI launcher with logging via `nixcraft` command
+  8. Custom waywall and GLFW path support for speedrunning
+  9. Desktop entry icons
+
+## CLI Tools
+
+Nixcraft provides several command-line tools:
+
+### nixcraft (CLI Launcher)
+
+Launch instances with terminal output and automatic logging.
+
+```bash
+nixcraft <instance>        # Launch an instance with logging
+nixcraft list              # List available instances
+nixcraft logs <instance>   # View logs for an instance
+
+# Examples
+nixcraft 1.21.1            # Launch your 1.21.1 instance
+nixcraft Ranked            # Launch your MCSR Ranked instance
+```
+
+Logs are saved to `~/.local/share/nixcraft/logs/<instance>/<timestamp>.log`
+
+### nixcraft-auth (Microsoft Authentication)
+
+Authenticate your Microsoft/Minecraft account for online play.
+
+```bash
+nixcraft-auth login        # Login via Microsoft OAuth
+nixcraft-auth status       # Check authentication status
+nixcraft-auth refresh      # Refresh access token
+nixcraft-auth logout       # Remove stored credentials
+nixcraft-auth token-path   # Show path to access token file
+```
+
+### nixcraft-skin (Skin & Cape Manager)
+
+Manage Minecraft skins and capes.
+
+```bash
+nixcraft-skin fetch <username>           # Download a player's skin
+nixcraft-skin fetch-capes <username>     # Download a player's cape
+nixcraft-skin apply <file> [--variant]   # Apply a skin to your account
+nixcraft-skin list [--capes]             # List saved skins/capes
+nixcraft-skin my-capes                   # List your owned capes
+nixcraft-skin set-cape <id-or-name>      # Set active cape (or 'none')
+nixcraft-skin info                       # Show directory paths
+```
+
+Skins are saved to `~/.local/share/nixcraft/skins/`
+Capes are saved to `~/.local/share/nixcraft/skins/capes/`
 
 ## TODO
 
