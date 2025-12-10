@@ -259,6 +259,17 @@ in
               else "${authDir}/username"
             else null;
 
+          # XUID: use xuidPath if set, otherwise derive from accessTokenPath directory
+          xuidSource =
+            if hasRuntimeAuth then
+              if config.account.xuidPath != null
+              then config.account.xuidPath
+              else "${authDir}/xuid"
+            else null;
+
+          # User type for Microsoft accounts
+          userType = if config.account != null then config.account.userType else "msa";
+
           # Runtime auth arguments (read from files at launch time)
           runtimeAuthArgs =
             if hasRuntimeAuth then
@@ -266,6 +277,8 @@ in
                 "--accessToken $(cat ${escapeShellArg config.account.accessTokenPath})"
                 "--uuid $(cat ${escapeShellArg uuidSource})"
                 "--username $(cat ${escapeShellArg usernameSource})"
+                "--userType ${userType}"
+                "--xuid $(cat ${escapeShellArg xuidSource})"
               ]
             else "--accessToken dummy";
         in concatStringsSep " " [

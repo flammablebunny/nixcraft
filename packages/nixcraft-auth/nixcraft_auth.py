@@ -161,11 +161,18 @@ def full_auth_flow(ms_access_token: str) -> dict:
     click.echo("Authenticating with Xbox Live...")
     xbl_response = xbox_live_auth(ms_access_token)
     xbl_token = xbl_response["Token"]
-    user_hash = xbl_response["DisplayClaims"]["xui"][0]["uhs"]
+    xui_claims = xbl_response["DisplayClaims"]["xui"][0]
+    user_hash = xui_claims["uhs"]
+    # XUID is in the xid field of the Xbox Live response
+    xuid = xui_claims.get("xid", "")
 
     click.echo("Getting XSTS token...")
     xsts_response = xsts_auth(xbl_token)
     xsts_token = xsts_response["Token"]
+    # XUID might also be in XSTS response if not in XBL
+    if not xuid:
+        xsts_xui = xsts_response.get("DisplayClaims", {}).get("xui", [{}])[0]
+        xuid = xsts_xui.get("xid", "")
 
     click.echo("Authenticating with Minecraft...")
     mc_response = minecraft_auth(xsts_token, user_hash)
@@ -180,6 +187,7 @@ def full_auth_flow(ms_access_token: str) -> dict:
         "expires_at": int(time.time()) + mc_expires_in,
         "username": profile["name"],
         "uuid": profile["id"],
+        "xuid": xuid,
         "skins": profile.get("skins", []),
     }
 
@@ -250,6 +258,12 @@ def login():
             f.write(mc_data["username"])
         os.chmod(username_path, 0o600)
 
+        # Write XUID to file for nixcraft (required for Microsoft account auth)
+        xuid_path = get_data_dir() / "xuid"
+        with open(xuid_path, 'w') as f:
+            f.write(mc_data.get("xuid", ""))
+        os.chmod(xuid_path, 0o600)
+
         click.echo(f"\n✓ Logged in as {mc_data['username']} (UUID: {mc_data['uuid']})")
         click.echo(f"  Tokens saved to {get_data_dir()}")
         click.echo(f"\n  Use this in your nixcraft config:")
@@ -301,6 +315,12 @@ def refresh():
             f.write(mc_data["username"])
         os.chmod(username_path, 0o600)
 
+        # Write XUID to file for nixcraft
+        xuid_path = get_data_dir() / "xuid"
+        with open(xuid_path, 'w') as f:
+            f.write(mc_data.get("xuid", ""))
+        os.chmod(xuid_path, 0o600)
+
         click.echo(f"✓ Tokens refreshed for {mc_data['username']}")
 
     except requests.HTTPError as e:
@@ -342,7 +362,7 @@ def logout():
     """Remove saved authentication data."""
     data_dir = get_data_dir()
 
-    files = ["microsoft_token.json", "minecraft_token.json", "access_token", "uuid", "username"]
+    files = ["microsoft_token.json", "minecraft_token.json", "access_token", "uuid", "username", "xuid"]
     removed = 0
 
     for filename in files:

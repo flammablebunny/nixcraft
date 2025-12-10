@@ -50,6 +50,26 @@
       '';
     };
 
+    xuidPath = lib.mkOption {
+      type = lib.types.nullOr lib.types.nonEmptyStr;
+      default = null;
+      description = ''
+        Path to a file containing the Xbox User ID (XUID).
+        Use nixcraft-auth to generate this file.
+        If accessTokenPath is set and xuidPath is not, defaults to the xuid file
+        in the same directory as the access token.
+      '';
+    };
+
+    userType = lib.mkOption {
+      type = lib.types.enum ["msa" "mojang" "legacy"];
+      default = "msa";
+      description = ''
+        The account type. "msa" for Microsoft accounts (default),
+        "mojang" for legacy Mojang accounts, "legacy" for very old accounts.
+      '';
+    };
+
     skin = lib.mkOption {
       type = lib.types.submodule {
         options = {
