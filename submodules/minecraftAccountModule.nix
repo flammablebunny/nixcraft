@@ -22,6 +22,32 @@
     accessTokenPath = lib.mkOption {
       type = lib.types.nullOr lib.types.nonEmptyStr;
       default = null;
+      description = ''
+        Path to a file containing the Minecraft access token.
+        Use nixcraft-auth to generate this file.
+      '';
+    };
+
+    uuidPath = lib.mkOption {
+      type = lib.types.nullOr lib.types.nonEmptyStr;
+      default = null;
+      description = ''
+        Path to a file containing the Minecraft UUID.
+        Use nixcraft-auth to generate this file.
+        If accessTokenPath is set and uuidPath is not, defaults to the uuid file
+        in the same directory as the access token.
+      '';
+    };
+
+    usernamePath = lib.mkOption {
+      type = lib.types.nullOr lib.types.nonEmptyStr;
+      default = null;
+      description = ''
+        Path to a file containing the Minecraft username.
+        Use nixcraft-auth to generate this file.
+        If accessTokenPath is set and usernamePath is not, defaults to the username file
+        in the same directory as the access token.
+      '';
     };
 
     skin = lib.mkOption {

@@ -238,6 +238,18 @@ def login():
             f.write(mc_data["access_token"])
         os.chmod(token_path, 0o600)
 
+        # Write UUID to file for nixcraft
+        uuid_path = get_data_dir() / "uuid"
+        with open(uuid_path, 'w') as f:
+            f.write(mc_data["uuid"])
+        os.chmod(uuid_path, 0o600)
+
+        # Write username to file for nixcraft
+        username_path = get_data_dir() / "username"
+        with open(username_path, 'w') as f:
+            f.write(mc_data["username"])
+        os.chmod(username_path, 0o600)
+
         click.echo(f"\n✓ Logged in as {mc_data['username']} (UUID: {mc_data['uuid']})")
         click.echo(f"  Tokens saved to {get_data_dir()}")
         click.echo(f"\n  Use this in your nixcraft config:")
@@ -276,6 +288,18 @@ def refresh():
         with open(token_path, 'w') as f:
             f.write(mc_data["access_token"])
         os.chmod(token_path, 0o600)
+
+        # Write UUID to file for nixcraft
+        uuid_path = get_data_dir() / "uuid"
+        with open(uuid_path, 'w') as f:
+            f.write(mc_data["uuid"])
+        os.chmod(uuid_path, 0o600)
+
+        # Write username to file for nixcraft
+        username_path = get_data_dir() / "username"
+        with open(username_path, 'w') as f:
+            f.write(mc_data["username"])
+        os.chmod(username_path, 0o600)
 
         click.echo(f"✓ Tokens refreshed for {mc_data['username']}")
 
@@ -318,7 +342,7 @@ def logout():
     """Remove saved authentication data."""
     data_dir = get_data_dir()
 
-    files = ["microsoft_token.json", "minecraft_token.json", "access_token"]
+    files = ["microsoft_token.json", "minecraft_token.json", "access_token", "uuid", "username"]
     removed = 0
 
     for filename in files:

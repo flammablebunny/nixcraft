@@ -238,17 +238,41 @@ in
       shared
 
       {
-        finalLaunchShellCommandString = concatStringsSep " " [
+        finalLaunchShellCommandString = let
+          # Determine auth file paths
+          hasRuntimeAuth = config.account != null && config.account.accessTokenPath != null;
+          authDir = if hasRuntimeAuth then builtins.dirOf config.account.accessTokenPath else null;
+
+          # UUID: use uuidPath if set, otherwise derive from accessTokenPath directory
+          uuidSource =
+            if hasRuntimeAuth then
+              if config.account.uuidPath != null
+              then config.account.uuidPath
+              else "${authDir}/uuid"
+            else null;
+
+          # Username: use usernamePath if set, otherwise derive from accessTokenPath directory
+          usernameSource =
+            if hasRuntimeAuth then
+              if config.account.usernamePath != null
+              then config.account.usernamePath
+              else "${authDir}/username"
+            else null;
+
+          # Runtime auth arguments (read from files at launch time)
+          runtimeAuthArgs =
+            if hasRuntimeAuth then
+              concatStringsSep " " [
+                "--accessToken $(cat ${escapeShellArg config.account.accessTokenPath})"
+                "--uuid $(cat ${escapeShellArg uuidSource})"
+                "--username $(cat ${escapeShellArg usernameSource})"
+              ]
+            else "--accessToken dummy";
+        in concatStringsSep " " [
           ''"${config.java.package}/bin/java"''
           config.java.finalArgumentShellString
           config.finalArgumentShellString
-
-          # unmodded client doesn't launch if access token is not provided
-          "--accessToken $(cat ${
-            if (config.account != null && config.account.accessTokenPath != null)
-            then escapeShellArg config.account.accessTokenPath
-            else pkgs.writeText "dummy" "dummy"
-          })"
+          runtimeAuthArgs
         ];
 
         finalLaunchShellScript = let
@@ -500,8 +524,9 @@ in
           _classSettings.userProperties = lib.mkDefault {};
         })
 
-      (lib.mkIf (config.account
-        != null) {
+      # Only set static uuid/username when NOT using runtime auth (accessTokenPath)
+      # When accessTokenPath is set, uuid/username are read from files at runtime
+      (lib.mkIf (config.account != null && config.account.accessTokenPath == null) {
         _classSettings.uuid = lib.mkIf (config.account.uuid != null) config.account.uuid;
         _classSettings.username = lib.mkIf (config.account.username != null) config.account.username;
       })
