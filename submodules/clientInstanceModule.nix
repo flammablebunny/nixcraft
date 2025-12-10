@@ -124,59 +124,64 @@ in
         type = with lib.types; nonEmptyStr;
         readOnly = true;
         default = with lib;
-          escapeShellArgs (
-            concatLists [
-              ["--version" config._classSettings.version]
-              ["--assetsDir" "${config._classSettings.assetsDir}"]
-              ["--assetIndex" config._classSettings.assetIndex]
+          let
+            # Build most args with escapeShellArgs
+            staticArgs = escapeShellArgs (
+              concatLists [
+                ["--version" config._classSettings.version]
+                ["--assetIndex" config._classSettings.assetIndex]
 
-              (
-                let
-                  cond = config._classSettings.userProperties != null;
-                in
-                  (optional cond "--userProperties") ++ (optional cond (builtins.toJSON config._classSettings.userProperties))
-              )
+                (
+                  let
+                    cond = config._classSettings.userProperties != null;
+                  in
+                    (optional cond "--userProperties") ++ (optional cond (builtins.toJSON config._classSettings.userProperties))
+                )
 
-              (
-                let
-                  cond = config._classSettings.gameDir != null;
-                in
-                  (optional cond "--gameDir") ++ (optional cond config._classSettings.gameDir)
-              )
+                (
+                  let
+                    cond = config._classSettings.gameDir != null;
+                  in
+                    (optional cond "--gameDir") ++ (optional cond config._classSettings.gameDir)
+                )
 
-              (
-                let
-                  cond = config._classSettings.username != null;
-                in
-                  (optional cond "--username") ++ (optional cond config._classSettings.username)
-              )
+                (
+                  let
+                    cond = config._classSettings.username != null;
+                  in
+                    (optional cond "--username") ++ (optional cond config._classSettings.username)
+                )
 
-              (
-                let
-                  cond = config._classSettings.uuid != null;
-                in
-                  (optional cond "--uuid") ++ (optional cond config._classSettings.uuid)
-              )
+                (
+                  let
+                    cond = config._classSettings.uuid != null;
+                  in
+                    (optional cond "--uuid") ++ (optional cond config._classSettings.uuid)
+                )
 
-              (
-                let
-                  cond = config._classSettings.height != null;
-                in
-                  (optional cond "--height") ++ (optional cond (toString config._classSettings.height))
-              )
+                (
+                  let
+                    cond = config._classSettings.height != null;
+                  in
+                    (optional cond "--height") ++ (optional cond (toString config._classSettings.height))
+                )
 
-              (
-                let
-                  cond = config._classSettings.width != null;
-                in
-                  (optional cond "--width") ++ (optional cond (toString config._classSettings.width))
-              )
+                (
+                  let
+                    cond = config._classSettings.width != null;
+                  in
+                    (optional cond "--width") ++ (optional cond (toString config._classSettings.width))
+                )
 
-              (optional (config._classSettings.fullscreen) "--fullscreen")
+                (optional (config._classSettings.fullscreen) "--fullscreen")
 
-              config.extraArguments
-            ]
-          );
+                config.extraArguments
+              ]
+            );
+            # assetsDir uses shell variable, so don't escape it
+            assetsDirArg = ''--assetsDir "$NIXCRAFT_ASSETS_DIR"'';
+          in
+            "${staticArgs} ${assetsDirArg}";
       };
 
       _classSettings = lib.mkOption {
@@ -187,8 +192,16 @@ in
                 type = lib.types.nonEmptyStr;
               };
 
-              assetsDir = lib.mkOption {
+              # The read-only source assets directory (in nix store)
+              sourceAssetsDir = lib.mkOption {
                 type = lib.types.path;
+                description = "Read-only assets directory from nix store";
+              };
+
+              # The writable assets directory (used at runtime)
+              assetsDir = lib.mkOption {
+                type = lib.types.str;
+                description = "Writable assets directory path (used at runtime)";
               };
 
               assetIndex = lib.mkOption {
@@ -354,6 +367,32 @@ in
         waywall = {};
       }
 
+      # Set up writable assets directory (allows Minecraft to cache skins)
+      {
+        preLaunchShellScript = let
+          sourceAssetsDir = config._classSettings.sourceAssetsDir;
+        in ''
+          # Create writable assets directory structure
+          NIXCRAFT_ASSETS_DIR="$HOME/.local/share/nixcraft/assets"
+          export NIXCRAFT_ASSETS_DIR
+
+          mkdir -p "$NIXCRAFT_ASSETS_DIR"
+
+          # Symlink indexes directory from nix store
+          if [ ! -e "$NIXCRAFT_ASSETS_DIR/indexes" ]; then
+            ln -s "${sourceAssetsDir}/indexes" "$NIXCRAFT_ASSETS_DIR/indexes"
+          fi
+
+          # Symlink objects directory from nix store
+          if [ ! -e "$NIXCRAFT_ASSETS_DIR/objects" ]; then
+            ln -s "${sourceAssetsDir}/objects" "$NIXCRAFT_ASSETS_DIR/objects"
+          fi
+
+          # Create writable skins directory for caching
+          mkdir -p "$NIXCRAFT_ASSETS_DIR/skins"
+        '';
+      }
+
       # Place saves
       {
         files =
@@ -393,7 +432,9 @@ in
         _classSettings = {
           version = lib.mkOptionDefault config.meta.versionData.id;
           assetIndex = config.meta.versionData.assets;
-          assetsDir =
+
+          # Source assets from nix store (read-only)
+          sourceAssetsDir =
             if config.enableFastAssetDownload
             then
               (mkAssetsDir {
@@ -402,6 +443,9 @@ in
                 useAria2c = config.enableFastAssetDownload;
               })
             else mkAssetsDir {versionData = config.meta.versionData;};
+
+          # Writable assets directory (allows skin caching)
+          assetsDir = "\${NIXCRAFT_ASSETS_DIR}";
 
           gameDir = lib.mkDefault config.absoluteDir;
         };
