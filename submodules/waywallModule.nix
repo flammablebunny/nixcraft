@@ -42,7 +42,7 @@
       description = ''
         Direct path to a custom libglfw.so file.
         Takes precedence over glfwPackage if both are set.
-        Example: /home/user/glfw/build/src/ylibglfw.so
+        Example: /home/user/glfw/build/src/libglfw.so
       '';
     };
 
