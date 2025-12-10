@@ -65,6 +65,11 @@ in
               type = lib.types.nonEmptyStr;
               default = "Nixcraft Instance ${name}";
             };
+            icon = lib.mkOption {
+              type = lib.types.nullOr lib.types.path;
+              default = null;
+              description = "Path to the icon file for the desktop entry";
+            };
             extraConfig = lib.mkOption {
               type = lib.types.attrs;
               default = {};
@@ -266,12 +271,19 @@ in
                   text = defaultScript;
                   executable = true;
                 };
+
+              waywallBin =
+                if config.waywall.binaryPath != null
+                then config.waywall.binaryPath
+                else if config.waywall.package != null
+                then "${config.waywall.package}/bin/waywall"
+                else "${pkgs.waywall}/bin/waywall";
             in ''
               #!${pkgs.bash}/bin/bash
 
               set -e
 
-              ${configDirStr} ${configTextStr} exec "${config.waywall.package}/bin/waywall" wrap ${profileStr} -- "${runScript}" "$@"
+              ${configDirStr} ${configTextStr} exec "${waywallBin}" wrap ${profileStr} -- "${runScript}" "$@"
             '')
           else defaultScript;
 
@@ -283,10 +295,8 @@ in
           ${config.preLaunchShellScript}
         '';
 
-        # set waywall stuff
-        waywall = {
-          package = pkgs.waywall;
-        };
+        # set waywall stuff - defaults removed, now optional
+        waywall = {};
       }
 
       # Place saves
@@ -435,8 +445,15 @@ in
 
       (lib.mkIf config.waywall.enable {
         # waywall uses custom libglfw.so
-        java.extraArguments = [
-          "-Dorg.lwjgl.glfw.libname=${inputs.self.packages.${system}.glfw3-waywall}/lib/libglfw.so"
+        java.extraArguments = let
+          glfwLibPath =
+            if config.waywall.glfwPath != null
+            then config.waywall.glfwPath
+            else if config.waywall.glfwPackage != null
+            then "${config.waywall.glfwPackage}/lib/libglfw.so"
+            else "${inputs.self.packages.${system}.glfw3-waywall}/lib/libglfw.so";
+        in [
+          "-Dorg.lwjgl.glfw.libname=${glfwLibPath}"
         ];
       })
 

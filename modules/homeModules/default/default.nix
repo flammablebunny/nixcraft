@@ -92,6 +92,9 @@ in {
           # Place desktop entries
           xdg = perClientInstance (instance: let
             entryName = "nixcraft-${instance.name}";
+            iconAttr = lib.optionalAttrs (instance.desktopEntry.icon != null) {
+              icon = instance.desktopEntry.icon;
+            };
           in
             lib.mkIf (instance.enable && instance.desktopEntry.enable) (
               lib.mkMerge [
@@ -101,6 +104,7 @@ in {
                       exec = lib.mkDefault "${lib.getExe instance.binEntry.finalBin}";
                       name = lib.mkDefault instance.desktopEntry.name;
                     }
+                    // iconAttr
                     // instance.desktopEntry.extraConfig;
                 }
               ]
