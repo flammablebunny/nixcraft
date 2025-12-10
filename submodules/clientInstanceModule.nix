@@ -378,17 +378,24 @@ in
 
           mkdir -p "$NIXCRAFT_ASSETS_DIR"
 
-          # Symlink indexes directory from nix store
+          # Symlink indexes directory from nix store (update if stale)
+          if [ -L "$NIXCRAFT_ASSETS_DIR/indexes" ] && [ ! -e "$NIXCRAFT_ASSETS_DIR/indexes" ]; then
+            rm "$NIXCRAFT_ASSETS_DIR/indexes"
+          fi
           if [ ! -e "$NIXCRAFT_ASSETS_DIR/indexes" ]; then
             ln -s "${sourceAssetsDir}/indexes" "$NIXCRAFT_ASSETS_DIR/indexes"
           fi
 
-          # Symlink objects directory from nix store
+          # Symlink objects directory from nix store (update if stale)
+          if [ -L "$NIXCRAFT_ASSETS_DIR/objects" ] && [ ! -e "$NIXCRAFT_ASSETS_DIR/objects" ]; then
+            rm "$NIXCRAFT_ASSETS_DIR/objects"
+          fi
           if [ ! -e "$NIXCRAFT_ASSETS_DIR/objects" ]; then
             ln -s "${sourceAssetsDir}/objects" "$NIXCRAFT_ASSETS_DIR/objects"
           fi
 
           # Create writable skins directory for caching
+          # Skins are cached after first download - subsequent loads are instant
           mkdir -p "$NIXCRAFT_ASSETS_DIR/skins"
         '';
       }
