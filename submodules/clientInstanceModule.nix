@@ -19,6 +19,12 @@
 }: let
   inherit (lib) escapeShellArgs escapeShellArg concatStringsSep;
   inherit (lib.nixcraft.filesystem) listJarFilesRecursive;
+
+  # Helper to check if a library name contains LWJGL
+  isLwjglLibrary = lib: builtins.match ".*org\\.lwjgl.*" lib.name != null;
+
+  # Filter out LWJGL libraries from a list
+  filterOutLwjgl = libraries: builtins.filter (lib: !isLwjglLibrary lib) libraries;
 in
   {
     name,
@@ -84,6 +90,16 @@ in
       account = lib.mkOption {
         type = with lib.types; nullOr (submodule minecraftAccountModule);
         default = null;
+      };
+
+      lwjglVersion = lib.mkOption {
+        type = lib.types.nullOr (lib.types.enum ["3.3.3"]);
+        default = null;
+        description = ''
+          Override the LWJGL version used by the instance.
+          Set to "3.3.3" to use LWJGL 3.3.3 (required for some speedrunning setups).
+          When null (default), uses the LWJGL version from the Minecraft manifest.
+        '';
       };
 
       saves = lib.mkOption {
@@ -489,5 +505,16 @@ in
         _classSettings.uuid = lib.mkIf (config.account.uuid != null) config.account.uuid;
         _classSettings.username = lib.mkIf (config.account.username != null) config.account.username;
       })
+
+      # LWJGL version override
+      (lib.mkIf (config.lwjglVersion != null) (let
+        lwjglData = sources.lwjgl3.versions.${config.lwjglVersion};
+        lwjglLibraries = lwjglData.libraries;
+      in {
+        # Replace vanilla LWJGL libraries with the override version
+        libraries = lib.mkForce (
+          (filterOutLwjgl config.meta.versionData.libraries) ++ lwjglLibraries
+        );
+      }))
     ];
   }
