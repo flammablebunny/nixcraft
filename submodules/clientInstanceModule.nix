@@ -354,6 +354,28 @@ in
           config.saves;
       }
 
+      # Apply skin before launch if configured
+      (lib.mkIf (config.account != null && config.account.skin.file != null && config.account.accessTokenPath != null) {
+        preLaunchShellScript = let
+          skinPath = config.account.skin.file;
+          variant = config.account.skin.variant;
+          tokenPath = config.account.accessTokenPath;
+        in ''
+          # Apply skin to Minecraft account
+          echo "Applying skin (${variant})..."
+          if ${pkgs.curl}/bin/curl -s -X POST \
+            -H "Authorization: Bearer $(cat ${escapeShellArg tokenPath})" \
+            -F "variant=${variant}" \
+            -F "file=@${skinPath}" \
+            "https://api.minecraftservices.com/minecraft/profile/skins" \
+            -o /dev/null -w "%{http_code}" | grep -q "^20"; then
+            echo "Skin applied successfully"
+          else
+            echo "Warning: Failed to apply skin (continuing anyway)"
+          fi
+        '';
+      })
+
       {
         _classSettings = {
           version = lib.mkOptionDefault config.meta.versionData.id;
