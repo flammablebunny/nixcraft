@@ -12,7 +12,38 @@
     enable = lib.mkEnableOption "waywall";
 
     package = lib.mkOption {
-      type = lib.types.package;
+      type = lib.types.nullOr lib.types.package;
+      default = null;
+      description = "The waywall package to use. If null and binaryPath is set, binaryPath is used instead.";
+    };
+
+    binaryPath = lib.mkOption {
+      type = lib.types.nullOr lib.types.path;
+      default = null;
+      description = ''
+        Direct path to the waywall binary.
+        Takes precedence over package if both are set.
+        Example: /home/user/waywall/result/bin/waywall
+      '';
+    };
+
+    glfwPackage = lib.mkOption {
+      type = lib.types.nullOr lib.types.package;
+      default = null;
+      description = ''
+        Custom GLFW package for waywall. If null, uses the default glfw3-waywall package.
+        Set this if you have a custom-built GLFW with waywall patches.
+      '';
+    };
+
+    glfwPath = lib.mkOption {
+      type = lib.types.nullOr lib.types.path;
+      default = null;
+      description = ''
+        Direct path to a custom libglfw.so file.
+        Takes precedence over glfwPackage if both are set.
+        Example: /home/user/glfw/build/src/ylibglfw.so
+      '';
     };
 
     profile = lib.mkOption {
