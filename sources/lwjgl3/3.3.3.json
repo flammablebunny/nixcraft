@@ -7,7 +7,8 @@
                 "artifact": {
                     "sha1": "149070a5480900347071b7074779531f25a6e3dc",
                     "size": 1245129,
-                    "url": "https://libraries.minecraft.net/org/lwjgl/lwjgl-freetype/3.3.3/lwjgl-freetype-3.3.3-natives-linux.jar"
+                    "url": "https://libraries.minecraft.net/org/lwjgl/lwjgl-freetype/3.3.3/lwjgl-freetype-3.3.3-natives-linux.jar",
+                    "path": "org/lwjgl/lwjgl-freetype/3.3.3/lwjgl-freetype-3.3.3-natives-linux.jar"
                 }
             },
             "name": "org.lwjgl:lwjgl-freetype:3.3.3:natives-linux",
@@ -36,7 +37,8 @@
                 "artifact": {
                     "sha1": "a03684c5e4b1b1dbbe0d29dbbdc27b985b6840f2",
                     "size": 118478,
-                    "url": "https://libraries.minecraft.net/org/lwjgl/lwjgl-glfw/3.3.3/lwjgl-glfw-3.3.3-natives-linux.jar"
+                    "url": "https://libraries.minecraft.net/org/lwjgl/lwjgl-glfw/3.3.3/lwjgl-glfw-3.3.3-natives-linux.jar",
+                    "path": "org/lwjgl/lwjgl-glfw/3.3.3/lwjgl-glfw-3.3.3-natives-linux.jar"
                 }
             },
             "name": "org.lwjgl:lwjgl-glfw:3.3.3:natives-linux",
@@ -65,7 +67,8 @@
                 "artifact": {
                     "sha1": "4f86728bf449b1dd61251c4e0ac01df1389cb51e",
                     "size": 206779,
-                    "url": "https://libraries.minecraft.net/org/lwjgl/lwjgl-jemalloc/3.3.3/lwjgl-jemalloc-3.3.3-natives-linux.jar"
+                    "url": "https://libraries.minecraft.net/org/lwjgl/lwjgl-jemalloc/3.3.3/lwjgl-jemalloc-3.3.3-natives-linux.jar",
+                    "path": "org/lwjgl/lwjgl-jemalloc/3.3.3/lwjgl-jemalloc-3.3.3-natives-linux.jar"
                 }
             },
             "name": "org.lwjgl:lwjgl-jemalloc:3.3.3:natives-linux",
@@ -94,7 +97,8 @@
                 "artifact": {
                     "sha1": "1713758e3660ba66e1e954396fd18126038b33c0",
                     "size": 114627,
-                    "url": "https://libraries.minecraft.net/org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3-natives-linux.jar"
+                    "url": "https://libraries.minecraft.net/org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3-natives-linux.jar",
+                    "path": "org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3-natives-linux.jar"
                 }
             },
             "name": "org.lwjgl:lwjgl:3.3.3:natives-linux",
@@ -112,7 +116,8 @@
                 "artifact": {
                     "sha1": "3037360cc4595079bea240af250b6d1a527e0905",
                     "size": 573224,
-                    "url": "https://libraries.minecraft.net/org/lwjgl/lwjgl-openal/3.3.3/lwjgl-openal-3.3.3-natives-linux.jar"
+                    "url": "https://libraries.minecraft.net/org/lwjgl/lwjgl-openal/3.3.3/lwjgl-openal-3.3.3-natives-linux.jar",
+                    "path": "org/lwjgl/lwjgl-openal/3.3.3/lwjgl-openal-3.3.3-natives-linux.jar"
                 }
             },
             "name": "org.lwjgl:lwjgl-openal:3.3.3:natives-linux",
@@ -141,7 +146,8 @@
                 "artifact": {
                     "sha1": "62c70a4b00ca5391882b0f4b787c1588d24f1c86",
                     "size": 80463,
-                    "url": "https://libraries.minecraft.net/org/lwjgl/lwjgl-opengl/3.3.3/lwjgl-opengl-3.3.3-natives-linux.jar"
+                    "url": "https://libraries.minecraft.net/org/lwjgl/lwjgl-opengl/3.3.3/lwjgl-opengl-3.3.3-natives-linux.jar",
+                    "path": "org/lwjgl/lwjgl-opengl/3.3.3/lwjgl-opengl-3.3.3-natives-linux.jar"
                 }
             },
             "name": "org.lwjgl:lwjgl-opengl:3.3.3:natives-linux",
@@ -170,7 +176,8 @@
                 "artifact": {
                     "sha1": "fd1271ccd9d85eff2fa31f3fd543e02ccfaf5041",
                     "size": 231820,
-                    "url": "https://libraries.minecraft.net/org/lwjgl/lwjgl-stb/3.3.3/lwjgl-stb-3.3.3-natives-linux.jar"
+                    "url": "https://libraries.minecraft.net/org/lwjgl/lwjgl-stb/3.3.3/lwjgl-stb-3.3.3-natives-linux.jar",
+                    "path": "org/lwjgl/lwjgl-stb/3.3.3/lwjgl-stb-3.3.3-natives-linux.jar"
                 }
             },
             "name": "org.lwjgl:lwjgl-stb:3.3.3:natives-linux",
@@ -199,7 +206,8 @@
                 "artifact": {
                     "sha1": "d8d58daa0c3e5fd906fee96f5fddbcbc07cc308b",
                     "size": 44192,
-                    "url": "https://libraries.minecraft.net/org/lwjgl/lwjgl-tinyfd/3.3.3/lwjgl-tinyfd-3.3.3-natives-linux.jar"
+                    "url": "https://libraries.minecraft.net/org/lwjgl/lwjgl-tinyfd/3.3.3/lwjgl-tinyfd-3.3.3-natives-linux.jar",
+                    "path": "org/lwjgl/lwjgl-tinyfd/3.3.3/lwjgl-tinyfd-3.3.3-natives-linux.jar"
                 }
             },
             "name": "org.lwjgl:lwjgl-tinyfd:3.3.3:natives-linux",
