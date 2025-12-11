@@ -41,6 +41,40 @@ in
         type = lib.types.submodule waywallModule;
       };
 
+      # MangoHud overlay support
+      mangohud = lib.mkOption {
+        type = lib.types.submodule {
+          options = {
+            enable = lib.mkEnableOption "MangoHud overlay";
+            configFile = lib.mkOption {
+              type = lib.types.nullOr lib.types.path;
+              default = null;
+              description = "Path to MangoHud config file";
+            };
+          };
+        };
+        default = {};
+      };
+
+      # Generic wrapper command (runs before the game)
+      wrapper = lib.mkOption {
+        type = lib.types.nullOr (lib.types.either lib.types.str (lib.types.listOf lib.types.str));
+        default = null;
+        description = ''
+          Custom wrapper command for the game.
+          - If a string (path): uses "<path> wrap --" as the wrapper
+          - If a list: uses the list as the full command (game script appended)
+          Example: "/path/to/wrapper" or ["gamemoderun"] or ["env" "VAR=value" "command"]
+        '';
+        example = lib.literalExpression ''
+          "/usr/bin/gamemoderun"
+          # or
+          ["gamemoderun"]
+          # or
+          ["env" "MANGOHUD=1" "gamemoderun"]
+        '';
+      };
+
       enableNvidiaOffload = lib.mkEnableOption "nvidia offload";
 
       enableDriPrime = lib.mkEnableOption "dri prime (mesa)";
@@ -302,7 +336,8 @@ in
         ];
 
         finalLaunchShellScript = let
-          defaultScript = ''
+          # Base script that runs the game
+          baseScript = ''
             #!${pkgs.bash}/bin/bash
 
             set -e
@@ -315,45 +350,70 @@ in
 
             exec ${config.finalLaunchShellCommandString} "$@"
           '';
-        in
-          if config.waywall.enable
-          then
-            (let
-              configDirStr = lib.optionalString (config.waywall.configDir != null) "XDG_CONFIG_HOME=${(pkgs.linkFarm "waywall-config-dir" {
-                waywall = config.waywall.configDir;
-              })}";
 
-              configTextStr = lib.optionalString (config.waywall.configText != null) "XDG_CONFIG_HOME=${(pkgs.linkFarm "waywall-config-dir" {
-                "waywall/init.lua" = pkgs.writeTextFile {
-                  name = "init.lua";
-                  text = config.waywall.configText;
-                };
-              })}";
+          # Write base script to file
+          baseScriptFile = pkgs.writeTextFile {
+            name = "run-base";
+            text = baseScript;
+            executable = true;
+          };
 
-              profileStr = lib.optionalString (config.waywall.profile != null) "--profile ${lib.escapeShellArg config.waywall.profile}";
+          # Apply custom wrapper if set
+          # - If string (path): use "<path> wrap --"
+          # - If list: use as full command
+          wrapperCommand =
+            if config.wrapper == null then null
+            else if builtins.isString config.wrapper then
+              ''"${config.wrapper}" wrap --''
+            else
+              escapeShellArgs config.wrapper;
 
-              runScript =
-                pkgs.writeTextFile
-                {
-                  name = "run";
-                  text = defaultScript;
-                  executable = true;
-                };
+          wrappedScript =
+            if wrapperCommand != null then
+              pkgs.writeTextFile {
+                name = "run-wrapped";
+                text = ''
+                  #!${pkgs.bash}/bin/bash
+                  set -e
+                  exec ${wrapperCommand} "${baseScriptFile}" "$@"
+                '';
+                executable = true;
+              }
+            else baseScriptFile;
 
-              waywallBin =
-                if config.waywall.binaryPath != null
-                then config.waywall.binaryPath
-                else if config.waywall.package != null
-                then "${config.waywall.package}/bin/waywall"
-                else "${pkgs.waywall}/bin/waywall";
-            in ''
-              #!${pkgs.bash}/bin/bash
+          # Apply waywall wrapper if enabled
+          finalScript =
+            if config.waywall.enable then
+              let
+                configDirStr = lib.optionalString (config.waywall.configDir != null) "XDG_CONFIG_HOME=${(pkgs.linkFarm "waywall-config-dir" {
+                  waywall = config.waywall.configDir;
+                })}";
 
-              set -e
+                configTextStr = lib.optionalString (config.waywall.configText != null) "XDG_CONFIG_HOME=${(pkgs.linkFarm "waywall-config-dir" {
+                  "waywall/init.lua" = pkgs.writeTextFile {
+                    name = "init.lua";
+                    text = config.waywall.configText;
+                  };
+                })}";
 
-              ${configDirStr} ${configTextStr} exec "${waywallBin}" wrap ${profileStr} -- "${runScript}" "$@"
-            '')
-          else defaultScript;
+                profileStr = lib.optionalString (config.waywall.profile != null) "--profile ${lib.escapeShellArg config.waywall.profile}";
+
+                waywallBin =
+                  if config.waywall.binaryPath != null
+                  then config.waywall.binaryPath
+                  else if config.waywall.package != null
+                  then "${config.waywall.package}/bin/waywall"
+                  else "${pkgs.waywall}/bin/waywall";
+              in ''
+                #!${pkgs.bash}/bin/bash
+
+                set -e
+
+                ${configDirStr} ${configTextStr} exec "${waywallBin}" wrap ${profileStr} -- "${wrappedScript}" "$@"
+              ''
+            else
+              builtins.readFile wrappedScript;
+        in finalScript;
 
         finalActivationShellScript = ''
           ${config.activationShellScript}
@@ -553,6 +613,15 @@ in
       (lib.mkIf config.enableDriPrime {
         envVars = {
           DRI_PRIME = "1";
+        };
+      })
+
+      # MangoHud overlay support
+      (lib.mkIf config.mangohud.enable {
+        envVars = {
+          MANGOHUD = "1";
+        } // lib.optionalAttrs (config.mangohud.configFile != null) {
+          MANGOHUD_CONFIGFILE = toString config.mangohud.configFile;
         };
       })
 
