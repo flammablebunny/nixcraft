@@ -15,6 +15,11 @@ Warning - This project is in a usable state but still a work in progress. Do exp
   7. CLI launcher with logging via `nixcraft` command
   8. Custom waywall and GLFW path support for speedrunning
   9. Desktop entry icons
+  10. LWJGL version override (e.g., 3.3.3 for speedrunning)
+  11. MangoHud overlay support
+  12. Custom wrapper commands (gamemoderun, etc.)
+  13. Discrete GPU selection (NVIDIA/AMD)
+  14. Automatic skin caching
 
 ## CLI Tools
 
@@ -418,14 +423,72 @@ in {
             };
           };
 
-          rsg = {
+          # ============================================================
+          # MCSR Ranked Example - Full featured speedrunning setup
+          # ============================================================
+          ranked = {
             enable = true;
 
-            _classSettings = {
-              fullscreen = true;
-              uuid = "2909ee95-d459-40c4-bcbb-65a0cc413110";
-              username = "loystonlive";
+            mrpack = {
+              enable = true;
+              file = pkgs.fetchurl {
+                url = "https://redlime.github.io/MCSRMods/modpacks/v4/MCSRRanked-Linux-1.16.1-All.mrpack";
+                hash = "sha256-mPerodqNklfLpeNzcJqe5g/wf9mGFwPNl7vApl/RggI=";
+              };
             };
+
+            # Override LWJGL version (required for some speedrunning setups)
+            lwjglVersion = "3.3.3";
+
+            # Enable MangoHud overlay for FPS/performance monitoring
+            mangohud.enable = true;
+            # mangohud.configFile = ./mangohud.conf;  # Optional custom config
+
+            java = {
+              package = pkgs.jdk17;
+              maxMemory = 4096;
+              minMemory = 512;
+            };
+
+            # Waywall with custom command for GPU selection
+            waywall = {
+              enable = true;
+              # Simple path (auto-adds "wrap --")
+              binaryPath = "/path/to/waywall";
+              glfwPath = "/path/to/libglfw.so";
+
+              # OR full custom command as list (you control everything)
+              # command = ["env" "DRI_PRIME=renderD128" "/path/to/waywall" "wrap" "--"];
+            };
+
+            # Microsoft account authentication (use nixcraft-auth to login)
+            account = {
+              username = "YourUsername";
+              accessTokenPath = "/home/user/.local/share/nixcraft/auth/access_token";
+              # Skin auto-applied before each launch
+              skin = {
+                file = /path/to/skin.png;
+                variant = "classic";  # or "slim"
+              };
+            };
+
+            binEntry = {
+              enable = true;
+              name = "ranked";
+            };
+
+            desktopEntry = {
+              enable = true;
+              name = "MCSR Ranked";
+              icon = /path/to/icon.png;
+            };
+          };
+
+          # ============================================================
+          # RSG (Random Seed Glitchless) Example
+          # ============================================================
+          rsg = {
+            enable = true;
 
             mrpack = {
               enable = true;
@@ -435,28 +498,51 @@ in {
               };
             };
 
-            # place custom files
-            files = {
-              # setting config files
-              "config/mcsr/standardsettings.json".source = ./standardsettings.json;
-              "options.txt" = {
-                source = ./options.txt;
-              };
+            # LWJGL 3.3.3 for better performance
+            lwjglVersion = "3.3.3";
+
+            # MangoHud for monitoring
+            mangohud.enable = true;
+
+            # Custom wrapper command (e.g., gamemoderun)
+            # wrapper = ["gamemoderun"];
+            # wrapper = "/usr/bin/gamemoderun";  # String form adds "wrap --"
+
+            # Custom environment variables
+            envVars = {
+              SOME_VAR = "value";
             };
+
+            # GPU Selection
+            useDiscreteGPU = true;        # Enable discrete GPU (default: true)
+            # enableDriPrime = true;      # AMD/Intel: sets DRI_PRIME=1
+            # enableNvidiaOffload = true; # NVIDIA: sets offload env vars
 
             java = {
+              package = pkgs.graalvmPackages.graalvm-oracle_17;
+              maxMemory = 14000;
+              minMemory = 11500;
               extraArguments = [
+                "-XX:+UnlockExperimentalVMOptions"
                 "-XX:+UseZGC"
                 "-XX:+AlwaysPreTouch"
-                "-Dgraal.TuneInlinerExploration=1"
-                "-XX:NmethodSweepActivity=1"
               ];
-              package = pkgs.jdk17;
-              maxMemory = 4000;
-              minMemory = 4000;
             };
 
-            waywall.enable = true;
+            # Waywall for wall-style resets
+            waywall = {
+              enable = true;
+              binaryPath = "/path/to/waywall";
+              glfwPath = "/path/to/libglfw.so";
+              # profile = "my-profile";       # Optional waywall profile
+              # configDir = /path/to/config;  # Custom config directory
+              # configText = "lua code here"; # Inline lua config
+            };
+
+            account = {
+              username = "YourUsername";
+              accessTokenPath = "/home/user/.local/share/nixcraft/auth/access_token";
+            };
 
             binEntry = {
               enable = true;
@@ -465,11 +551,25 @@ in {
 
             desktopEntry = {
               enable = true;
-              name = "Nixcraft RSG";
-              extraConfig = {
-                terminal = true;
-              };
+              name = "SeedQueue RSG";
+              icon = /path/to/icon.png;
             };
+          };
+
+          # ============================================================
+          # Simple client with MangoHud only
+          # ============================================================
+          casual = {
+            enable = true;
+            version = "1.21.1";
+
+            # Just enable MangoHud overlay
+            mangohud.enable = true;
+
+            # Use a wrapper like gamemoderun
+            wrapper = ["gamemoderun"];
+
+            binEntry.enable = true;
           };
         };
       };

@@ -342,6 +342,9 @@ in
 
             set -e
 
+            # Export instance Java path for wrapper commands
+            export INST_JAVA="${config.java.package}/bin/java"
+
             ${lib.nixcraft.mkExportedEnvVars config.envVars}
 
             ${config.finalPreLaunchShellScript}
@@ -398,18 +401,42 @@ in
 
                 profileStr = lib.optionalString (config.waywall.profile != null) "--profile ${lib.escapeShellArg config.waywall.profile}";
 
-                waywallBin =
-                  if config.waywall.binaryPath != null
-                  then config.waywall.binaryPath
-                  else if config.waywall.package != null
-                  then "${config.waywall.package}/bin/waywall"
-                  else "${pkgs.waywall}/bin/waywall";
+                # Full custom command takes precedence
+                # - If command is a list: args are escaped and joined
+                # - If command is a string starting with / or ./: treat as path, add "wrap --"
+                # - If command is any other string: use verbatim as shell command
+                # - Otherwise fall back to binaryPath or package
+                waywallCommand =
+                  if config.waywall.command != null then
+                    if builtins.isList config.waywall.command then
+                      escapeShellArgs config.waywall.command
+                    else if builtins.isString config.waywall.command then
+                      let
+                        cmd = config.waywall.command;
+                        isPath = lib.hasPrefix "/" cmd || lib.hasPrefix "./" cmd;
+                      in
+                        if isPath then
+                          ''"${cmd}" wrap ${profileStr} --''
+                        else
+                          # Full shell command - used verbatim
+                          "${cmd}"
+                    else
+                      throw "waywall.command must be a string or list"
+                  else
+                    let
+                      waywallBin =
+                        if config.waywall.binaryPath != null
+                        then config.waywall.binaryPath
+                        else if config.waywall.package != null
+                        then "${config.waywall.package}/bin/waywall"
+                        else "${pkgs.waywall}/bin/waywall";
+                    in ''"${waywallBin}" wrap ${profileStr} --'';
               in ''
                 #!${pkgs.bash}/bin/bash
 
                 set -e
 
-                ${configDirStr} ${configTextStr} exec "${waywallBin}" wrap ${profileStr} -- "${wrappedScript}" "$@"
+                ${configDirStr} ${configTextStr} exec ${waywallCommand} "${wrappedScript}" "$@"
               ''
             else
               builtins.readFile wrappedScript;

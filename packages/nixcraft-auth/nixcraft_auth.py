@@ -12,7 +12,6 @@ import sys
 import time
 import webbrowser
 from pathlib import Path
-from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlencode, parse_qs, urlparse
 import requests
 import click
@@ -25,6 +24,8 @@ REDIRECT_URI = "https://login.live.com/oauth20_desktop.srf"
 # API endpoints
 MS_AUTH_URL = "https://login.live.com/oauth20_authorize.srf"
 MS_TOKEN_URL = "https://login.live.com/oauth20_token.srf"
+MS_DEVICE_CODE_URL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode"
+MS_DEVICE_TOKEN_URL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
 XBL_AUTH_URL = "https://user.auth.xboxlive.com/user/authenticate"
 XSTS_AUTH_URL = "https://xsts.auth.xboxlive.com/xsts/authorize"
 MC_AUTH_URL = "https://api.minecraftservices.com/authentication/login_with_xbox"
@@ -68,6 +69,53 @@ def microsoft_oauth_url():
     return f"{MS_AUTH_URL}?{urlencode(params)}"
 
 
+def request_device_code() -> dict:
+    """Request a device code for device flow authentication."""
+    data = {
+        "client_id": CLIENT_ID,
+        "scope": "XboxLive.signin offline_access",
+    }
+    response = requests.post(MS_DEVICE_CODE_URL, data=data)
+    response.raise_for_status()
+    return response.json()
+
+
+def poll_for_token(device_code: str, interval: int, expires_in: int) -> dict:
+    """Poll for access token after user enters the code."""
+    data = {
+        "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+        "client_id": CLIENT_ID,
+        "device_code": device_code,
+    }
+
+    start_time = time.time()
+    while time.time() - start_time < expires_in:
+        time.sleep(interval)
+        response = requests.post(MS_DEVICE_TOKEN_URL, data=data)
+
+        if response.status_code == 200:
+            return response.json()
+
+        result = response.json()
+        error = result.get("error")
+
+        if error == "authorization_pending":
+            # User hasn't entered code yet, keep polling
+            continue
+        elif error == "slow_down":
+            # Polling too fast, increase interval
+            interval += 5
+            continue
+        elif error == "expired_token":
+            raise Exception("Device code expired. Please try again.")
+        elif error == "authorization_declined":
+            raise Exception("Authorization was declined by the user.")
+        else:
+            raise Exception(f"Authentication error: {error} - {result.get('error_description', '')}")
+
+    raise Exception("Device code expired. Please try again.")
+
+
 def exchange_code_for_token(code: str) -> dict:
     """Exchange authorization code for access token."""
     data = {
@@ -83,11 +131,19 @@ def exchange_code_for_token(code: str) -> dict:
 
 def refresh_microsoft_token(refresh_token: str) -> dict:
     """Refresh Microsoft access token."""
+    # Try device token endpoint first (for device flow tokens)
     data = {
         "client_id": CLIENT_ID,
         "refresh_token": refresh_token,
         "grant_type": "refresh_token",
     }
+
+    # Try the consumers endpoint (device flow)
+    response = requests.post(MS_DEVICE_TOKEN_URL, data=data)
+    if response.status_code == 200:
+        return response.json()
+
+    # Fall back to the desktop endpoint (legacy flow)
     response = requests.post(MS_TOKEN_URL, data=data)
     response.raise_for_status()
     return response.json()
@@ -192,6 +248,38 @@ def full_auth_flow(ms_access_token: str) -> dict:
     }
 
 
+def save_auth_files(mc_data: dict):
+    """Save all authentication files."""
+    # Save Minecraft tokens and profile
+    save_tokens(mc_data, "minecraft_token.json")
+
+    # Write access token to file for nixcraft
+    token_path = get_data_dir() / "access_token"
+    with open(token_path, 'w') as f:
+        f.write(mc_data["access_token"])
+    os.chmod(token_path, 0o600)
+
+    # Write UUID to file for nixcraft
+    uuid_path = get_data_dir() / "uuid"
+    with open(uuid_path, 'w') as f:
+        f.write(mc_data["uuid"])
+    os.chmod(uuid_path, 0o600)
+
+    # Write username to file for nixcraft
+    username_path = get_data_dir() / "username"
+    with open(username_path, 'w') as f:
+        f.write(mc_data["username"])
+    os.chmod(username_path, 0o600)
+
+    # Write XUID to file for nixcraft (required for Microsoft account auth)
+    xuid_path = get_data_dir() / "xuid"
+    with open(xuid_path, 'w') as f:
+        f.write(mc_data.get("xuid", ""))
+    os.chmod(xuid_path, 0o600)
+
+    return token_path
+
+
 @click.group()
 def cli():
     """Nixcraft Microsoft Authentication Helper"""
@@ -200,7 +288,59 @@ def cli():
 
 @cli.command()
 def login():
-    """Login with Microsoft account."""
+    """Login with Microsoft account using device code flow (recommended)."""
+    try:
+        click.echo("Requesting device code...")
+        device_response = request_device_code()
+
+        user_code = device_response["user_code"]
+        verification_uri = device_response["verification_uri"]
+        device_code = device_response["device_code"]
+        expires_in = device_response.get("expires_in", 900)
+        interval = device_response.get("interval", 5)
+
+        click.echo(f"\n{'='*50}")
+        click.echo(f"Please visit: {verification_uri}")
+        click.echo(f"And enter code: {user_code}")
+        click.echo(f"{'='*50}\n")
+
+        # Try to open browser
+        webbrowser.open(verification_uri)
+
+        click.echo("Waiting for authorization...")
+        click.echo("(Press Ctrl+C to cancel)\n")
+
+        ms_tokens = poll_for_token(device_code, interval, expires_in)
+
+        click.echo("✓ Authorization successful!\n")
+
+        # Save Microsoft tokens for refresh
+        save_tokens({
+            "access_token": ms_tokens["access_token"],
+            "refresh_token": ms_tokens.get("refresh_token"),
+            "expires_at": int(time.time()) + ms_tokens.get("expires_in", 3600),
+        }, "microsoft_token.json")
+
+        # Complete the auth flow
+        mc_data = full_auth_flow(ms_tokens["access_token"])
+        token_path = save_auth_files(mc_data)
+
+        click.echo(f"\n✓ Logged in as {mc_data['username']} (UUID: {mc_data['uuid']})")
+        click.echo(f"  Tokens saved to {get_data_dir()}")
+        click.echo(f"\n  Use this in your nixcraft config:")
+        click.echo(f'    accessTokenPath = "{token_path}";')
+
+    except KeyboardInterrupt:
+        click.echo("\n\nCancelled by user.")
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"Authentication failed: {e}", err=True)
+        sys.exit(1)
+
+
+@cli.command()
+def login_legacy():
+    """Login with Microsoft account using browser redirect (legacy method)."""
     auth_url = microsoft_oauth_url()
 
     click.echo("Opening browser for Microsoft login...")
@@ -236,33 +376,7 @@ def login():
 
         # Complete the auth flow
         mc_data = full_auth_flow(ms_tokens["access_token"])
-
-        # Save Minecraft tokens and profile
-        save_tokens(mc_data, "minecraft_token.json")
-
-        # Write access token to file for nixcraft
-        token_path = get_data_dir() / "access_token"
-        with open(token_path, 'w') as f:
-            f.write(mc_data["access_token"])
-        os.chmod(token_path, 0o600)
-
-        # Write UUID to file for nixcraft
-        uuid_path = get_data_dir() / "uuid"
-        with open(uuid_path, 'w') as f:
-            f.write(mc_data["uuid"])
-        os.chmod(uuid_path, 0o600)
-
-        # Write username to file for nixcraft
-        username_path = get_data_dir() / "username"
-        with open(username_path, 'w') as f:
-            f.write(mc_data["username"])
-        os.chmod(username_path, 0o600)
-
-        # Write XUID to file for nixcraft (required for Microsoft account auth)
-        xuid_path = get_data_dir() / "xuid"
-        with open(xuid_path, 'w') as f:
-            f.write(mc_data.get("xuid", ""))
-        os.chmod(xuid_path, 0o600)
+        token_path = save_auth_files(mc_data)
 
         click.echo(f"\n✓ Logged in as {mc_data['username']} (UUID: {mc_data['uuid']})")
         click.echo(f"  Tokens saved to {get_data_dir()}")
@@ -296,30 +410,7 @@ def refresh():
         }, "microsoft_token.json")
 
         mc_data = full_auth_flow(new_ms_tokens["access_token"])
-        save_tokens(mc_data, "minecraft_token.json")
-
-        token_path = get_data_dir() / "access_token"
-        with open(token_path, 'w') as f:
-            f.write(mc_data["access_token"])
-        os.chmod(token_path, 0o600)
-
-        # Write UUID to file for nixcraft
-        uuid_path = get_data_dir() / "uuid"
-        with open(uuid_path, 'w') as f:
-            f.write(mc_data["uuid"])
-        os.chmod(uuid_path, 0o600)
-
-        # Write username to file for nixcraft
-        username_path = get_data_dir() / "username"
-        with open(username_path, 'w') as f:
-            f.write(mc_data["username"])
-        os.chmod(username_path, 0o600)
-
-        # Write XUID to file for nixcraft
-        xuid_path = get_data_dir() / "xuid"
-        with open(xuid_path, 'w') as f:
-            f.write(mc_data.get("xuid", ""))
-        os.chmod(xuid_path, 0o600)
+        save_auth_files(mc_data)
 
         click.echo(f"✓ Tokens refreshed for {mc_data['username']}")
 
@@ -347,13 +438,13 @@ def status():
         remaining = expires_at - now
         hours = remaining // 3600
         minutes = (remaining % 3600) // 60
-        status = f"Valid ({hours}h {minutes}m remaining)"
+        status_str = f"Valid ({hours}h {minutes}m remaining)"
     else:
-        status = "Expired (run 'nixcraft-auth refresh')"
+        status_str = "Expired (run 'nixcraft-auth refresh')"
 
     click.echo(f"Username: {username}")
     click.echo(f"UUID: {uuid}")
-    click.echo(f"Token: {status}")
+    click.echo(f"Token: {status_str}")
     click.echo(f"Data dir: {get_data_dir()}")
 
 

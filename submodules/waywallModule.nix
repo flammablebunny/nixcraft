@@ -27,6 +27,29 @@
       '';
     };
 
+    command = lib.mkOption {
+      type = lib.types.nullOr (lib.types.either lib.types.str (lib.types.listOf lib.types.str));
+      default = null;
+      description = ''
+        Full custom waywall wrapper command. Takes precedence over binaryPath and package.
+        - If a string: used as-is (for shell commands or simple paths)
+          - If it looks like a path (starts with / or ./): adds "wrap --" automatically
+          - Otherwise: used verbatim as a shell command (game script path appended as $1)
+        - If a list: args are escaped and joined (game script appended)
+        Example: ["env" "DRI_PRIME=renderD128" "/path/to/waywall" "wrap" "--"]
+      '';
+      example = lib.literalExpression ''
+        # List form (recommended) - args are properly escaped
+        ["env" "DRI_PRIME=renderD128" "/path/to/waywall" "wrap" "--"]
+
+        # Simple path string - auto-adds "wrap --"
+        "/path/to/waywall"
+
+        # Full shell command string - used verbatim, game script is $1
+        "env DRI_PRIME=renderD128 /path/to/waywall wrap --"
+      '';
+    };
+
     glfwPackage = lib.mkOption {
       type = lib.types.nullOr lib.types.package;
       default = null;
