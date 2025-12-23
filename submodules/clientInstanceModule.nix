@@ -401,13 +401,16 @@ in
 
                 profileStr = lib.optionalString (config.waywall.profile != null) "--profile ${lib.escapeShellArg config.waywall.profile}";
 
+                # rawCommand takes highest precedence - uses GAME_SCRIPT variable
                 # Full custom command takes precedence
                 # - If command is a list: args are escaped and joined
                 # - If command is a string starting with / or ./: treat as path, add "wrap --"
                 # - If command is any other string: use verbatim as shell command
                 # - Otherwise fall back to binaryPath or package
                 waywallCommand =
-                  if config.waywall.command != null then
+                  if config.waywall.rawCommand != null then
+                    null  # handled separately below
+                  else if config.waywall.command != null then
                     if builtins.isList config.waywall.command then
                       escapeShellArgs config.waywall.command
                     else if builtins.isString config.waywall.command then
@@ -431,13 +434,37 @@ in
                         then "${config.waywall.package}/bin/waywall"
                         else "${pkgs.waywall}/bin/waywall";
                     in ''"${waywallBin}" wrap ${profileStr} --'';
-              in ''
-                #!${pkgs.bash}/bin/bash
+              in
+                if config.waywall.rawCommand != null then
+                  let
+                    # Handle both string and list formats for rawCommand
+                    rawCommandStr =
+                      if builtins.isList config.waywall.rawCommand then
+                        # List format: join with spaces (variables like $GAME_SCRIPT will expand at runtime)
+                        concatStringsSep " " config.waywall.rawCommand
+                      else
+                        # String format: use verbatim
+                        config.waywall.rawCommand;
+                  in
+                  # rawCommand mode: export GAME_SCRIPT and INST_JAVA, then exec the raw command
+                  ''
+                    #!${pkgs.bash}/bin/bash
 
-                set -e
+                    set -e
 
-                ${configDirStr} ${configTextStr} exec ${waywallCommand} "${wrappedScript}" "$@"
-              ''
+                    export GAME_SCRIPT="${wrappedScript}"
+                    export INST_JAVA="${config.java.package}/bin/java"
+
+                    ${configDirStr} ${configTextStr} exec ${rawCommandStr}
+                  ''
+                else
+                  ''
+                    #!${pkgs.bash}/bin/bash
+
+                    set -e
+
+                    ${configDirStr} ${configTextStr} exec ${waywallCommand} "${wrappedScript}" "$@"
+                  ''
             else
               builtins.readFile wrappedScript;
         in finalScript;

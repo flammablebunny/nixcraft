@@ -50,6 +50,44 @@
       '';
     };
 
+    rawCommand = lib.mkOption {
+      type = lib.types.nullOr (lib.types.either lib.types.str (lib.types.listOf lib.types.str));
+      default = null;
+      description = ''
+        Raw shell command with access to special variables. Takes precedence over all other command options.
+        Available variables:
+        - $GAME_SCRIPT: path to the game launch script
+        - $INST_JAVA: path to the Java binary for this instance
+        The command is evaluated in bash with these variables exported.
+
+        Can be specified as:
+        - A string: used verbatim (requires careful escaping)
+        - A list: arguments are joined with spaces, no additional escaping
+          Use list format to avoid quote escaping issues when command contains = and quotes
+
+        Example (string): "env VAR=val /path/to/waywall wrap -- $GAME_SCRIPT"
+        Example (list): ["env" "VAR=val" "/path/to/waywall" "wrap" "--" "$GAME_SCRIPT"]
+      '';
+      example = lib.literalExpression ''
+        # List format (recommended for complex commands with = and quotes):
+        [
+          "env"
+          "__GLX_VENDOR_LIBRARY_NAME=amd"
+          "GBM_DEVICE=/dev/dri/renderD129"
+          "/home/user/waywall/bin/waywall"
+          "wrap"
+          "--"
+          "env"
+          "__GLX_VENDOR_LIBRARY_NAME=intel"
+          "DRI_PRIME=1"
+          "$GAME_SCRIPT"
+        ]
+
+        # String format:
+        "env __GLX_VENDOR_LIBRARY_NAME=amd /home/user/waywall/bin/waywall wrap -- $GAME_SCRIPT"
+      '';
+    };
+
     glfwPackage = lib.mkOption {
       type = lib.types.nullOr lib.types.package;
       default = null;
