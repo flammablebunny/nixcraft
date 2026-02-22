@@ -712,6 +712,9 @@ in
       })
 
       (lib.mkIf config.waywall.enable {
+        # Pull in waywall's runtime dependencies into LD_LIBRARY_PATH
+        runtimeLibs = [ pkgs.libircclient ];
+
         # waywall uses custom libglfw.so
         java.extraArguments = let
           glfwLibPath =
