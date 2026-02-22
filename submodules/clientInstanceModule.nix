@@ -452,6 +452,7 @@ in
 
                     set -e
 
+                    export LD_LIBRARY_PATH="${lib.makeLibraryPath config.runtimeLibs}"
                     export GAME_SCRIPT="${wrappedScript}"
                     export INST_JAVA="${config.java.package}/bin/java"
 
@@ -463,6 +464,7 @@ in
 
                     set -e
 
+                    export LD_LIBRARY_PATH="${lib.makeLibraryPath config.runtimeLibs}"
                     ${configDirStr} ${configTextStr} exec ${waywallCommand} "${wrappedScript}" "$@"
                   ''
             else
